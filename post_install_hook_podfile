@@ -1,0 +1,79 @@
+source 'https://github.com/CocoaPods/Specs.git'
+inhibit_all_warnings!
+
+def all_shared_pods
+    pod 'AFNetworkActivityLogger', :git => 'https://github.com/AFNetworking/AFNetworkActivityLogger.git', :branch => '3_0_0'
+    pod 'Mantle', '~> 1.0'
+end
+
+def phone_shared_pods
+    pod 'Fabric'
+    pod 'Crashlytics'
+end
+
+# set targets seperately so that each target can have different platform and own pods.
+target '<APP_TARGET_NAME>' do
+    platform :ios, '9.0'
+    all_shared_pods
+    phone_shared_pods
+end
+
+target '<TODAY_WIDGET_TARGET_NAME>' do
+    platform :ios, '9.0'
+    all_shared_pods
+end
+
+target '<WATCH_TARGET_NAEM>' do
+    platform :watchos, '2.0'
+    all_shared_pods
+end
+
+target '<TEST_TARGET_NAME>' do
+    platform :ios, '9.0'
+    all_shared_pods
+end
+
+puts "Starting post_install ..."
+post_install do |installer_or_rep|
+	installer = installer_or_rep.respond_to?(:installer) ? installer_or_rep.installer : installer_or_rep
+	installer.pods_project.targets.each do |target|
+		puts "target.name = #{target.name}"
+		if target.name.include?("<POD_NAME>")
+		    target.build_configurations.each do |config|
+		    	puts "#{config} configuration..."
+		    	puts "before: #{config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'].inspect}"
+				puts '---'
+                
+		    	config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+                
+		    	#config.build_settings['GCC_ENABLE_OBJC_GC'] = 'supported'
+                                
+		    	if config.name.include?("Debug")
+		    		# Set optimization level for project
+		    		config.build_settings['GCC_OPTIMIZATION_LEVEL'] = '0'
+		    	end
+		    	
+                if config.name == 'Debug Test'
+			        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'MOCK_API'
+			    elsif config.name == 'Debug Local Test'
+			        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'LOCAL_MOCK_API'    
+			    elsif config.name == 'Debug Aqua'
+			        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'AQUA_API'
+		        elsif config.name == 'Debug Beta'
+		        	config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'BETA_API'
+		        elsif config.name == 'Debug Local'
+		        	config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'LOCAL_API'
+		        elsif config.name == 'Debug Local Proxy'
+		        	config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'LOCAL_PROXY_API'
+		        elsif config.name == 'Release Aqua'
+		        	config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'AQUA_API'	
+		        else
+		        	config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'PROD_API'
+			    end
+                
+			    puts "after: #{config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'].inspect}"
+	        	puts '---'
+		    end
+		end
+  	end
+end
